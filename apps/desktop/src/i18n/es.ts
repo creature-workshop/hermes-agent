@@ -4802,6 +4802,8 @@ export const esOverrides = {
       'Este chat sigue trabajando o espera tu respuesta. Cerrar la pestaña lo oculta; la sesión conserva su progreso y puede volver a abrirse desde la barra lateral.',
     closeRunningConfirm: 'Cerrar pestaña',
     reload: 'Recargar',
+    popOut: 'Desacoplar',
+    poppedOutWaiting: 'Esperando al complemento que proporciona este panel',
     closeOthers: 'Cerrar las demás',
     closeToRight: 'Cerrar las de la derecha',
     closeAll: 'Cerrar todo',

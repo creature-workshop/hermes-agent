@@ -155,6 +155,14 @@ The ONLY import surface is `@hermes/plugin-sdk` (plus `react` /
   (never throws). View/navigation actions only; `ctx.listActions()` lists them
   (`PluginAppActionId` / `PLUGIN_APP_ACTIONS`). Never dispatch a synthetic
   `KeyboardEvent` to trigger an app shortcut.
+- `ctx.windows.openPane('pane', { maximized? })` — pop one of YOUR OWN panes
+  (by the local id you registered under `area: 'panes'`) into a separate OS
+  window; the docked copy is dismissed until the window closes. Resolves
+  `{ ok: true }` or `{ ok: false, reason: 'denied'|'unavailable'|'unknown', error }`
+  (never throws): `denied` for a pane you did not register (core panes and
+  other plugins' panes are unreachable), `unavailable` outside Electron or on
+  an older build. The user has the same action as "Pop out" on the pane's
+  tab menu. Feature-detect: `ctx.windows?.openPane`.
 - `ctx.i18n.register({ en, ja, ... })` — ship your OWN locale bundles, scoped
   to your plugin (never edit core `en.ts`). Values are literal strings or
   interpolator functions; nested trees are addressed by dot-path. Read them

@@ -3226,6 +3226,8 @@ export const jaOverrides = {
     minimize: '最小化',
     restore: '復元',
     reload: '再読み込み',
+    popOut: 'ポップアウト',
+    poppedOutWaiting: 'このペインを提供するプラグインを待っています',
     closeOthers: '他を閉じる',
     closeToRight: '右側を閉じる',
     closeAll: 'すべて閉じる',

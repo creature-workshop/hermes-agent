@@ -23,6 +23,7 @@ import {
 } from 'react'
 
 import { ShellMenuItems } from '@/app/context-menu/shell-menu-items'
+import { popOutPane } from '@/app/pane-popout'
 import { TITLEBAR_DRAG_HANDLE_WIDTH } from '@/app/shell/titlebar'
 import { ActionsContextMenu, type MenuKit, renderActionItem } from '@/components/ui/actions-menu'
 import { Codicon } from '@/components/ui/codicon'
@@ -40,11 +41,13 @@ import {
 import { usePaneTabKeyboard } from '@/components/ui/pane-tab-keyboard'
 import { ContribBoundary, ContribRender } from '@/contrib/react/boundary'
 import { useContributions } from '@/contrib/react/use-contributions'
+import { registry } from '@/contrib/registry'
 import { useI18n } from '@/i18n'
 import { useKeybindHint } from '@/lib/keybinds/use-keybind-hint'
 import { isBrowserOwnedTouch } from '@/lib/touch-interaction'
 import { cn } from '@/lib/utils'
 import { closeAllOpenSessionTiles, setZoneParkedTiles } from '@/store/session-states'
+import { canOpenPaneWindow } from '@/store/windows'
 
 import { $layoutEditMode, $layoutEditRevealsHidden } from '../../edit-mode'
 import { useWindowControlsOverlap } from '../../geometry'
@@ -105,6 +108,19 @@ import { tabStripVisibleForZone } from './strip-visibility'
 import { useActiveTabVisible } from './tab-strip-scroll'
 import { paneChrome } from './track-model'
 import { useZoneHeaderLayout } from './zone-header-layout'
+
+/** Whether a pane can leave for its own OS window: a plugin-contributed pane
+ *  (core panes — the thread, terminal, files — are wired to this window's
+ *  stores) in a shell that can open one. Resolved when the menu renders. */
+function canPopOutPane(paneId: string): boolean {
+  if (!canOpenPaneWindow()) {
+    return false
+  }
+
+  const source = registry.getArea('panes').find(pane => pane.id === paneId)?.source
+
+  return Boolean(source?.startsWith('plugin:'))
+}
 
 /** Right-click zone menu: the tab verbs (close this / others / to the right /
  *  all) plus the strip's own chrome toggles. Same items and icons as a session
@@ -172,6 +188,12 @@ function ZoneMenu({
           label: t.zones.reload,
           onSelect: () => reloadTreePane(targetId)
         })}
+        {canPopOutPane(targetId) &&
+          renderActionItem(kit, {
+            icon: 'link-external',
+            label: t.zones.popOut,
+            onSelect: () => void popOutPane(targetId)
+          })}
         <kit.Separator />
         {paneTabCloseItems(kit, {
           counts: treeTabCloseTargets(targetId),

@@ -110,6 +110,11 @@ declare global {
       // `tabId` is the `$previewTabs` id; closing the window fires
       // `onBrowserPopoutClosed` so the caller can dock the tab again.
       openBrowserWindow?: (tabId: string) => Promise<{ ok: boolean; error?: string }>
+      // Pop one contributed pane (`area: 'panes'`, by registry id) into its own
+      // OS window with nothing else around it. `maximized` opens it filling the
+      // work area. Closing the window fires `onPanePopoutClosed` so the caller
+      // can dock the pane again.
+      openPaneWindow?: (paneId: string, options?: { maximized?: boolean }) => Promise<{ ok: boolean; error?: string }>
       // Cross-window renderer relay (pop-out Browser ↔ chat windows). Electron
       // main relays opaque payloads to the other Hermes renderer windows;
       // renderer code keeps the destination exact and rejects anything not
@@ -119,6 +124,7 @@ declare global {
         onMessage: (callback: (payload: unknown) => void) => () => void
       }
       onBrowserPopoutClosed?: (callback: (tabId: string) => void) => () => void
+      onPanePopoutClosed?: (callback: (paneId: string) => void) => () => void
       // Claim a one-shot cross-window ambient cue (turn-end sound / spoken
       // reply). Resolves true for the first window to claim a key, false for
       // peers — so N open windows don't all fire the same cue.

@@ -4817,6 +4817,8 @@ export const deOverrides = {
       'Dieser Chat arbeitet noch (oder wartet auf Ihre Eingabe). Das Schließen des Tabs blendet ihn nur aus – die Session behält ihren Fortschritt und kann über die Seitenleiste wieder geöffnet werden.',
     closeRunningConfirm: 'Tab schließen',
     reload: 'Neu laden',
+    popOut: 'Abdocken',
+    poppedOutWaiting: 'Warten auf das Plugin, das dieses Panel bereitstellt',
     closeOthers: 'Andere schließen',
     closeToRight: 'Nach rechts schließen',
     closeAll: 'Alle schließen',

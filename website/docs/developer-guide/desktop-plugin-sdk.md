@@ -210,6 +210,8 @@ interface PluginContext {
   /** Script in the preview Browser page — declared capability + per-origin user consent
    *  (see "Preview page scripts"). */
   preview: PluginPreview
+  /** Pop one of this plugin's own panes into a separate OS window (see "Pane windows"). */
+  windows: PluginWindows
   /** Plugin-scoped JSON persistence (keys live under `hermes.plugin.<id>.`). */
   storage: PluginStorage
 }
@@ -293,6 +295,11 @@ be re-enabled from **Capabilities → Plugins**. When a plugin contributes multi
 panes, closing one dismisses only that pane and leaves the plugin's other panes,
 commands, and middleware active. **Reset layout** restores dismissed contributed
 panes.
+
+A contributed pane can also leave the layout for its own OS window: the user
+picks **Pop out** on the pane's tab menu, or the plugin calls
+`ctx.windows.openPane('pane')` ([Pane windows](#pane-windows)). The docked copy
+is dismissed while the window is open and docks again when it closes.
 
 ### Pages and sidebar nav
 
@@ -1811,6 +1818,59 @@ actions a plugin can run.
 
 Feature-detect on older hosts: `ctx.runAction?.('view.showBrowser')`.
 
+### Pane windows — `ctx.windows` {#pane-windows}
+
+A pane registered under `area: 'panes'` can be popped into a separate OS
+window, so a large plugin surface (an editor, a board, a dashboard) can take a
+whole monitor while the chat window stays as it is. The window renders that one
+pane and nothing else: no layout tree, sidebar or title-bar tools. The docked
+copy is dismissed while the window is open and docks again when the window
+closes; **Reset layout** also restores it.
+
+The user can do this from the pane's tab menu (**Pop out**). A plugin does it
+with `ctx.windows.openPane`, naming the pane by the **local** id it registered:
+
+```ts
+register(ctx) {
+  ctx.register({ id: 'board', area: 'panes', title: 'Board', data: { placement: 'right' }, render: () => jsx(Board, {}) })
+
+  ctx.register({
+    id: 'board.popout',
+    area: PALETTE_AREA,
+    data: { label: 'Open board in a window' },
+    run: async () => {
+      const result = await ctx.windows.openPane('board', { maximized: true })
+      if (!result.ok) console.log(result.reason, result.error)
+    }
+  })
+}
+```
+
+```ts
+interface PluginWindows {
+  openPane(paneId: string, options?: { maximized?: boolean }): Promise<PluginWindowResult>
+}
+
+type PluginWindowResult =
+  | { ok: true }
+  | { ok: false; reason: 'denied' | 'unavailable' | 'unknown'; error: string }
+```
+
+A plugin can pop out only a pane it registered itself. The host checks the
+registry entry's source, not just the id prefix, so neither a core pane nor
+another plugin's pane is reachable under any spelling of the id:
+`reason: 'denied'`. A blank id is `reason: 'unknown'`. `reason: 'unavailable'`
+means the shell cannot open pane windows (a plain browser, an older desktop
+build) or the window did not open; the pane stays docked. Nothing throws, and
+every refusal logs a `[plugin:<id>] windows.openPane: …` warning.
+
+Inside the window the pane renders through the same plugin instance the window
+loads for itself, with the same `ctx`, `host.state.*` and `ctx.storage`. Until
+that plugin has loaded there, the window shows a waiting notice. Only one
+window per pane opens; a second call focuses the existing one.
+
+Feature-detect on older hosts: `ctx.windows?.openPane('board')`.
+
 ### Preview page scripts — `ctx.preview` {#preview-page-scripts}
 
 `ctx.preview.executeJavaScript(code)` runs `code` in the focused session's
@@ -2485,7 +2545,7 @@ pipeline as a trust boundary.
 | Category | Exports |
 |----------|---------|
 | Host | `host` (`.state.*`, `.settings`, `.notify`, `.notifyError`, `.navigate`, `.onEvent`, `.logs`, `.status`, `.restartGateway`, `.request`, `.composer`, `.spellcheck`, `.sessions`, `.skills`, `.toolsets`, `.profiles`, `.pluginDecisions`) |
-| Plugin contract | `HermesPlugin`, `PluginContext`, `PluginContribution`, `PluginStorage`, `PluginFiles`, `PluginFolder`, `PluginFileEntry`, `PluginFilesResult`, `PluginOs`, `PluginPet`, `PetSayOptions`, `PetMessageTone`, `PluginAppActionId`, `PluginAppActionInfo`, `PluginRunActionResult`, `PLUGIN_APP_ACTIONS`, `PluginRestOptions`, `PluginNativeNotificationInput`, `PluginNotificationAction`, `HermesOpenTarget`, `Contribution` |
+| Plugin contract | `HermesPlugin`, `PluginContext`, `PluginContribution`, `PluginStorage`, `PluginFiles`, `PluginFolder`, `PluginFileEntry`, `PluginFilesResult`, `PluginOs`, `PluginPet`, `PetSayOptions`, `PetMessageTone`, `PluginAppActionId`, `PluginAppActionInfo`, `PluginRunActionResult`, `PLUGIN_APP_ACTIONS`, `PluginWindows`, `PluginWindowResult`, `PluginOpenPaneOptions`, `PluginRestOptions`, `PluginNativeNotificationInput`, `PluginNotificationAction`, `HermesOpenTarget`, `Contribution` |
 | Area constants | `PANES_AREA`, `ROUTES_AREA`, `SIDEBAR_NAV_AREA`, `STATUSBAR_AREAS`, `TITLEBAR_AREAS`, `WORKSPACE_PAGE_HEADER_AREA`, `PALETTE_AREA`, `KEYBINDS_AREA`, `THEMES_AREA`, `COMPOSER_AREAS`, `MODEL_MENU_ROW_AREA`, `KANBAN_CARD_AREAS`, `SESSION_ROW_AREAS`, `SIDEBAR_NAV_PREFS_AREA`, `APPEARANCE_AREAS`, `SETTINGS_PLUGINS_AREA` |
 | Area payloads | `PluginSettingsPage`, `PluginSettingsSubpage` (+ `pluginSettingsHref`), `RouteContribution`, `SidebarNavContribution`, `StatusbarItem`, `TitlebarTool`, `PaletteContribution`, `KeybindContribution`, `ComposerMiddleware`, `ComposerAttachmentProvider`, `ComposerContextMenuProvider` (+ `ComposerContextMenuItem`, `ComposerContextMenuContext`, `ComposerContextMenuAction`), `SessionRowSlotContribution`, `KanbanCardBadgeContribution` (+ `KanbanCard`, `KanbanCardBoard`, `KanbanCardBadge`, `KanbanCardBadgeTone`, `KANBAN_CARD_BADGE_HUES`, `KANBAN_CARD_BADGE_LIMITS`), `SidebarNavPrefsContribution` |
 | React / state | `useValue`, `atom`, `computed`, `useQuery`, `useMutation`, `useQueryClient`, `queryClient`, `Contribute`, `WorkspacePageHeaderControl` |

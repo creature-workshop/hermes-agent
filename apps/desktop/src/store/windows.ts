@@ -107,11 +107,49 @@ export function windowBrowserTabId(): null | string {
   }
 }
 
+// A popped-out plugin pane (`?win=pane&pane=<registry id>`): one contributed
+// pane from the `panes` area, in its own OS window, with no layout tree,
+// sidebar or titlebar tools around it. The pane id rides `?pane=` next to
+// `win=pane` (before the hash, same contract as secondary / browser).
+let paneWindowCache: boolean | null = null
+
+export function isPaneWindow(): boolean {
+  if (paneWindowCache !== null) {
+    return paneWindowCache
+  }
+
+  let result = false
+
+  try {
+    result = new URLSearchParams(window.location.search).get('win') === 'pane'
+  } catch {
+    result = false
+  }
+
+  paneWindowCache = result
+
+  return result
+}
+
+export function windowPaneId(): null | string {
+  try {
+    return new URLSearchParams(window.location.search).get('pane')?.trim() || null
+  } catch {
+    return null
+  }
+}
+
 // True for any window that is NOT the primary app instance — a secondary
-// session window, the HUD, or a popped-out Browser. Single-claim channels
-// (the quick-entry capture bridge, the pet overlay control bridge) and the
-// install/onboarding overlays belong to the primary alone.
-export const isAuxiliaryWindow = (): boolean => isSecondaryWindow() || isHudWindow() || isBrowserWindow()
+// session window, the HUD, a popped-out Browser or a popped-out pane. Single-claim
+// channels (the quick-entry capture bridge, the pet overlay control bridge) and
+// the install/onboarding overlays belong to the primary alone.
+export const isAuxiliaryWindow = (): boolean =>
+  isSecondaryWindow() || isHudWindow() || isBrowserWindow() || isPaneWindow()
+
+// True for a window that renders no layout tree at all — a popped-out Browser
+// or pane shows ONE surface, so tile watchers, layout persistence and the
+// titlebar clusters have nothing to attach to there.
+export const isSingleSurfaceWindow = (): boolean => isBrowserWindow() || isPaneWindow()
 
 // A full peer window renders the ordinary app shell against the backend that
 // Electron already has running. It is not an auxiliary/specialized renderer,
@@ -295,6 +333,32 @@ export async function openBrowserInNewWindow(tabId: string): Promise<boolean> {
   }
 
   return runWindowOpen(() => openBrowserWindow(tabId), 'Could not pop out browser')
+}
+
+// The shell's call that pops a contributed pane into its own OS window, or
+// undefined where there is none (outside Electron, an older shell).
+function paneWindowOpener(): DesktopBridge['openPaneWindow'] {
+  const open = typeof window === 'undefined' ? undefined : window.hermesDesktop?.openPaneWindow
+
+  return typeof open === 'function' ? open : undefined
+}
+
+// True when the shell can pop a contributed pane into its own OS window.
+export function canOpenPaneWindow(): boolean {
+  return paneWindowOpener() !== undefined
+}
+
+/** Pop one contributed pane (by registry id) into its own OS window. Returns
+ *  whether the window opened so the caller can leave the pane docked on
+ *  failure. */
+export async function openPaneInNewWindow(paneId: string, options?: { maximized?: boolean }): Promise<boolean> {
+  const openPaneWindow = paneWindowOpener()
+
+  if (!paneId || !openPaneWindow) {
+    return false
+  }
+
+  return runWindowOpen(() => openPaneWindow(paneId, options), 'Could not pop out pane')
 }
 
 // Resume a session in the user's own terminal emulator, running the TUI there.

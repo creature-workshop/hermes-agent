@@ -499,6 +499,8 @@ export const zhHantChrome = {
     minimize: '最小化',
     restore: '還原',
     reload: '重新載入',
+    popOut: '彈出',
+    poppedOutWaiting: '正在等待提供此面板的外掛',
     closeOthers: '關閉其他',
     closeToRight: '關閉右側',
     closeAll: '全部關閉',

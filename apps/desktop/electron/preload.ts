@@ -69,6 +69,7 @@ contextBridge.exposeInMainWorld('hermesDesktop', {
   openSessionInTerminal: (sessionId, opts) => ipcRenderer.invoke('hermes:window:openInTerminal', sessionId, opts),
   openWindow: (options?: DesktopProfileRoute) => ipcRenderer.invoke('hermes:window:openInstance', options),
   openBrowserWindow: tabId => ipcRenderer.invoke('hermes:window:openBrowser', tabId),
+  openPaneWindow: (paneId, options) => ipcRenderer.invoke('hermes:window:openPane', paneId, options),
   windowRelay: {
     send: payload => ipcRenderer.send('hermes:window:relay', payload),
     onMessage: callback => {
@@ -83,6 +84,12 @@ contextBridge.exposeInMainWorld('hermesDesktop', {
     ipcRenderer.on('hermes:browser-popout:closed', listener)
 
     return () => ipcRenderer.removeListener('hermes:browser-popout:closed', listener)
+  },
+  onPanePopoutClosed: callback => {
+    const listener = (_event, paneId) => callback(paneId)
+    ipcRenderer.on('hermes:pane-popout:closed', listener)
+
+    return () => ipcRenderer.removeListener('hermes:pane-popout:closed', listener)
   },
   claimAmbientCue: key => ipcRenderer.invoke('hermes:ambient:claim', key),
   windowControls: {

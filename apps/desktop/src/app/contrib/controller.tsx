@@ -95,9 +95,11 @@ import { watchSessionPins } from '@/store/session-pin-sync'
 import { $botChatScopes } from '@/store/session-states'
 import { watchUnreadWriteGuard } from '@/store/session-unread-remote'
 import { $statusbarVisible } from '@/store/statusbar-prefs'
-import { isBrowserWindow, isHudWindow } from '@/store/windows'
+import { isBrowserWindow, isHudWindow, isPaneWindow, isSingleSurfaceWindow } from '@/store/windows'
 
 import { BrowserPopoutShell } from '../chat/browser-popout-shell'
+import { PanePopoutShell } from '../chat/pane-popout-shell'
+import { watchPanePopoutClosed } from '../pane-popout'
 import type { SessionDragPayload } from '../chat/composer/inline-refs'
 import { watchPreviewTiles } from '../chat/preview-tile'
 import { watchRouteTiles } from '../chat/route-tile'
@@ -459,16 +461,18 @@ discoverBundledPlugins()
 hydrateContributedPanes()
 
 // Session + route (page) tiles: persisted splits register panes docked beside
-// main. A popped-out Browser and the HUD have no layout tree — registering
-// tiles there would still run, and preview-tile watching would try to dock
-// into a tree this window never renders (and, in the HUD, paint a webview
-// into the transparent overlay).
-if (!isBrowserWindow() && !isHudWindow()) {
+// main. A popped-out Browser or pane and the HUD have no layout tree —
+// registering tiles there would still run, and preview-tile watching would
+// try to dock into a tree this window never renders (and, in the HUD, paint a
+// webview into the transparent overlay).
+if (!isSingleSurfaceWindow() && !isHudWindow()) {
   watchSessionTiles()
   startUnrestoredTileTitleBackfill()
   startTileBackendIdentityGuard()
   watchRouteTiles()
   watchPreviewTiles()
+  // A pane popped out of this tree docks again when its window closes.
+  watchPanePopoutClosed()
 }
 
 // Mirror sidebar pins into the backend keep-flag so the auto-archive sweep
@@ -803,6 +807,15 @@ export function ContribController() {
     return (
       <ContribWiring>
         <BrowserPopoutShell />
+        <PluginPreviewConsentDialog />
+      </ContribWiring>
+    )
+  }
+
+  if (isPaneWindow()) {
+    return (
+      <ContribWiring>
+        <PanePopoutShell />
         <PluginPreviewConsentDialog />
       </ContribWiring>
     )

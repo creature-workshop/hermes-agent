@@ -31,12 +31,14 @@ import { clearPetMessages, type PetSayOptions, sayPetMessage } from '@/store/pet
 import { type GatewayEventListener, onGatewayEvent } from './events'
 import { createPluginFiles, type PluginFiles } from './plugin-files'
 import { createPluginPreview, type PluginPreview } from './plugin-preview'
+import { createPluginWindows, type PluginWindows } from './plugin-windows'
 import { $pluginRecords } from './plugins-store'
 import { registry } from './registry'
 import { type PluginSettingsPage, settingsPageContribution } from './settings-pages'
 
 export type { PluginFileEntry, PluginFiles, PluginFilesResult, PluginFolder } from './plugin-files'
 export type { PluginPreview } from './plugin-preview'
+export type { PluginOpenPaneOptions, PluginWindowResult, PluginWindows } from './plugin-windows'
 import type { Contribution } from './types'
 
 export type { PluginSettingsPage, PluginSettingsSubpage } from './settings-pages'
@@ -180,6 +182,12 @@ export interface PluginContext {
    *  the app asks the user once per page origin before anything runs.
    *  Feature-detect on older hosts: `ctx.preview?.executeJavaScript`. */
   preview: PluginPreview
+  /** The window door: pop one of this plugin's own panes (by the local id it
+   *  registered) into a separate OS window. A foreign or unregistered id and
+   *  a host without the capability are refused with `{ ok: false, reason,
+   *  error }`, never thrown. Feature-detect on older hosts:
+   *  `ctx.windows?.openPane('pane')`. */
+  windows: PluginWindows
   /** Plugin-scoped persistence. */
   storage: PluginStorage
   /** Folder-scoped file access: this plugin's own data folder plus folders
@@ -400,6 +408,7 @@ export function createPluginContext(
     runAction: id => runPluginAppAction(pluginId, id),
     listActions: listPluginAppActions,
     preview: createPluginPreview(pluginId, capabilities),
+    windows: createPluginWindows(pluginId),
     storage: createPluginStorage(pluginId),
     files: createPluginFiles(pluginId),
     i18n: createPluginI18n(pluginId, track)

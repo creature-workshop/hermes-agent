@@ -3842,6 +3842,8 @@ export interface Translations extends NoticeTranslations {
     closeRunningBody: string
     closeRunningConfirm: string
     reload: string
+    popOut: string
+    poppedOutWaiting: string
     closeOthers: string
     closeToRight: string
     closeAll: string

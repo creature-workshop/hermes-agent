@@ -4827,6 +4827,8 @@ export const frOverrides = {
       "Cette conversation est toujours en cours (ou en attente de votre saisie). Fermer l'onglet la masque — la session conserve sa progression et peut être rouverte depuis la barre latérale.",
     closeRunningConfirm: "Fermer l'onglet",
     reload: 'Recharger',
+    popOut: 'Détacher',
+    poppedOutWaiting: 'En attente de l’extension qui fournit ce panneau',
     closeOthers: 'Fermer les autres',
     closeToRight: 'Fermer à droite',
     closeAll: 'Tout fermer',

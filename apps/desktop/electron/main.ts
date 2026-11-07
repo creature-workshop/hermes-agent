@@ -417,6 +417,14 @@ import {
 import { wireOauthSessionResponse } from './oauth-session-response'
 import { listWindowsProcesses, reapPackageRootedProcesses } from './package-process-reap'
 import {
+  buildPaneWindowUrl,
+  PANE_WINDOW_HEIGHT,
+  PANE_WINDOW_MIN_HEIGHT,
+  PANE_WINDOW_MIN_WIDTH,
+  PANE_WINDOW_WIDTH,
+  paneWindowRequestId
+} from './pane-windows'
+import {
   bundledPayload,
   installIdForRoot,
   type PayloadInfo,
@@ -12414,6 +12422,100 @@ function createBrowserWindow(tabId) {
   return browserWindows.openOrFocus(tabId, () => spawnBrowserWindow(tabId))
 }
 
+// Popped-out plugin pane: one contributed pane (`area: 'panes'`) in its own
+// OS window, nothing else around it. Same registry contract as the Browser
+// pop-out — one window per pane id (re-open focuses), and closing it tells the
+// other renderers so the pane can dock again.
+const paneWindows = createSessionWindowRegistry()
+
+function notifyPanePopoutClosed(paneId: string) {
+  for (const other of BrowserWindow.getAllWindows()) {
+    if (!other.isDestroyed()) {
+      other.webContents.send('hermes:pane-popout:closed', paneId)
+    }
+  }
+}
+
+function spawnPaneWindow(paneId: string, { maximized }: { maximized: boolean }) {
+  const icon = getAppIconPath()
+
+  const win = new BrowserWindow({
+    width: PANE_WINDOW_WIDTH,
+    height: PANE_WINDOW_HEIGHT,
+    minWidth: PANE_WINDOW_MIN_WIDTH,
+    minHeight: PANE_WINDOW_MIN_HEIGHT,
+    title: 'Hermes',
+    titleBarStyle: 'hidden',
+    titleBarOverlay: getTitleBarOverlayOptions(),
+    trafficLightPosition: IS_MAC ? WINDOW_BUTTON_POSITION : undefined,
+    ...chatWindowSurfaceOptions(),
+    icon,
+    show: false,
+    webPreferences: chatWindowWebPreferences(PRELOAD_PATH)
+  })
+
+  translucencyBackedWindows.add(win)
+
+  if (IS_MAC) {
+    win.setWindowButtonPosition?.(WINDOW_BUTTON_POSITION)
+  }
+
+  // A plugin that asked for a maximized pop-out (an IDE-sized surface) gets it
+  // before the first paint, so the renderer never lays out at the small size.
+  if (maximized) {
+    win.once('ready-to-show', () => {
+      if (!win.isDestroyed()) {
+        win.maximize()
+      }
+    })
+  }
+
+  wireWindowReveal(win)
+
+  bindWindowChromeEvents(win, sendWindowStateChanged)
+
+  streamThrottle.register(win)
+  wireCommonWindowHandlers(win, zoomWiringForWindowKind('chat'))
+  attachRendererConsoleCapture(win, 'pane-window', rememberLog)
+
+  installWindowRendererLifecycle(win, {
+    kind: 'pane',
+    callbacks: {
+      log: rememberLog,
+      reload: () => {
+        win.webContents.reload()
+      }
+    },
+    isIntentionalTeardown: rendererTeardownInProgress,
+    reloadWindowMs: RENDERER_RELOAD_WINDOW_MS,
+    reloadMax: RENDERER_RELOAD_MAX,
+    recentReloadTimesRef: rendererReloadTimesRef
+  })
+
+  minimizeToTray.registerWindow(win)
+  win.on('closed', () => {
+    notifyPanePopoutClosed(paneId)
+    // Deferred: paneWindows' own self-delete 'closed' listener is attached
+    // after this factory returns, so the size is only accurate next tick.
+    setImmediate(quitIfNoSurfaceLeft)
+  })
+
+  loadWindowUrl(
+    win,
+    buildPaneWindowUrl(paneId, {
+      devServer: DEV_SERVER,
+      rendererIndexPath: DEV_SERVER ? undefined : resolveRendererIndex()
+    }),
+    'Pane window'
+  )
+
+  return win
+}
+
+function createPaneWindow(paneId: string, options: { maximized: boolean }) {
+  return paneWindows.openOrFocus(paneId, () => spawnPaneWindow(paneId, options))
+}
+
 // Additional full "instance" windows — peers of the primary that render the
 // COMPLETE app (sidebar, routing, its own draft) against the shared backend, so
 // a user can run multiple GUI windows at once (⌘⇧N / the "New Window" palette
@@ -14206,6 +14308,17 @@ ipcMain.handle('hermes:window:openBrowser', async (_event, tabId) => {
   }
 
   createBrowserWindow(tabId.trim())
+
+  return { ok: true }
+})
+ipcMain.handle('hermes:window:openPane', async (_event, paneId, options) => {
+  const id = paneWindowRequestId(paneId)
+
+  if (!id) {
+    return { ok: false, error: 'invalid-pane-id' }
+  }
+
+  createPaneWindow(id, { maximized: Boolean(options?.maximized) })
 
   return { ok: true }
 })
@@ -18008,7 +18121,7 @@ function quitIfNoSurfaceLeft() {
     shouldQuitOnLastChatClosed({
       platform: process.platform,
       isQuittingForHandoff,
-      remainingChatWindows: chatWindows.size + browserWindows.size,
+      remainingChatWindows: chatWindows.size + browserWindows.size + paneWindows.size,
       quitInProgress
     })
   ) {

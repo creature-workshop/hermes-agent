@@ -14,6 +14,7 @@ export type {
   PluginFolder,
   PluginNativeNotificationInput,
   PluginNotificationAction,
+  PluginOpenPaneOptions,
   PluginOs,
   PluginPet,
   PluginPreview,
@@ -21,5 +22,7 @@ export type {
   PluginRunActionResult,
   PluginSettingsPage,
   PluginSettingsSubpage,
-  PluginStorage
+  PluginStorage,
+  PluginWindowResult,
+  PluginWindows
 } from '@/contrib/plugin'
