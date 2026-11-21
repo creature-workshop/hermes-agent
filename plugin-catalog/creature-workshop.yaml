@@ -2,7 +2,7 @@
 # Pinned to the plugin's current commit; bump sha and version together.
 name: creature-workshop
 repo: https://github.com/creature-workshop/creature-workshop-plugin
-sha: 90c14620c1f4b9501ea2fc39604d9fe069c3b445
+sha: b5003eac206904e472b00ea3684211ca41de8573
 title: Creature Workshop
 description: |
   Manage your project's development lifecycle all in one place: your project.
@@ -14,7 +14,7 @@ maintainer: jerrod-storm
 tier: community
 category: tools
 requires_hermes: ">=0.23.0"
-version: "0.1.0-dev.24"
+version: "0.1.0-dev.25"
 docs_url: https://github.com/creature-workshop/creature-workshop-plugin/blob/main/README.md
 platforms:
   - linux
